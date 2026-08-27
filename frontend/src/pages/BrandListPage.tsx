@@ -17,7 +17,7 @@ import { BrandProfileSummary } from '../types';
 import { fetchBrandProfiles, deleteBrandProfile } from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card } from '../components/ui/Card';
 
 export const BrandListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -87,24 +87,19 @@ export const BrandListPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-amber-200/80">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-950/60 px-2.5 py-0.5 rounded-full border border-indigo-500/30">
-              Phase 1: Ingestion & Compliance Foundation
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-3">
             Brand Kit Library
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-600 mt-1 font-medium">
             Manage ingested brand guidelines, logo repositories, vector tone anchors, and extracted compliance rules.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Button onClick={() => navigate('/brands/new')} variant="primary" size="md">
-            <Plus className="w-4 h-4 mr-1" /> New Brand Profile
+            <Plus className="w-4 h-4 mr-1 text-amber-400" /> New Brand Profile
           </Button>
         </div>
       </div>
@@ -112,14 +107,14 @@ export const BrandListPage: React.FC = () => {
       {/* Main Content */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-          <p className="text-sm text-slate-400">Loading brand profiles from Supabase...</p>
+          <div className="w-8 h-8 border-4 border-amber-300 border-t-amber-500 rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-600 font-bold">Loading brand profiles from Supabase...</p>
         </div>
       ) : error ? (
-        <Card className="border-rose-500/30 bg-rose-950/10">
-          <div className="flex items-center justify-between text-rose-300 text-sm">
+        <Card className="border-rose-200 bg-rose-50 p-4">
+          <div className="flex items-center justify-between text-rose-900 text-sm font-semibold">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-rose-400" />
+              <AlertCircle className="w-5 h-5 text-rose-600" />
               <span>{error}</span>
             </div>
             <Button variant="outline" size="sm" onClick={loadProfiles}>
@@ -128,18 +123,18 @@ export const BrandListPage: React.FC = () => {
           </div>
         </Card>
       ) : profiles.length === 0 ? (
-        <div className="text-center py-16 px-4 rounded-2xl glass-card border border-dashed border-slate-800 space-y-5">
-          <div className="w-16 h-16 bg-indigo-950/80 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto border border-indigo-500/30 glow-indigo">
-            <ShieldCheck className="w-8 h-8" />
+        <div className="text-center py-16 px-4 rounded-3xl bg-white border border-dashed border-amber-300 space-y-5 shadow-sm">
+          <div className="w-16 h-16 bg-amber-100 text-amber-900 rounded-2xl flex items-center justify-center mx-auto border border-amber-300 font-black text-2xl">
+            ⚡
           </div>
           <div className="max-w-md mx-auto space-y-2">
-            <h3 className="text-lg font-bold text-slate-100">No brand profiles found</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <h3 className="text-xl font-black text-slate-900">No brand profiles found</h3>
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
               Get started by uploading your company's official brand guideline PDF, logo lockups, and sample approved copy to build your first AI-audited Brand Kit.
             </p>
           </div>
           <Button onClick={() => navigate('/brands/new')} variant="primary" size="md">
-            <Plus className="w-4 h-4 mr-1" /> Ingest Your First Brand Kit
+            <Plus className="w-4 h-4 mr-1 text-amber-400" /> Ingest Your First Brand Kit
           </Button>
         </div>
       ) : (
@@ -148,52 +143,52 @@ export const BrandListPage: React.FC = () => {
             <div
               key={profile.id}
               onClick={() => navigate(`/brands/${profile.id}`)}
-              className="glass-card rounded-xl p-5 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer flex flex-col justify-between space-y-5 group relative overflow-hidden"
+              className="bg-white rounded-2xl p-6 border border-amber-200/80 hover:border-amber-400 transition-all cursor-pointer flex flex-col justify-between space-y-5 group relative overflow-hidden shadow-sm hover:shadow-md"
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-bold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
+                  <h3 className="text-lg font-black text-slate-900 group-hover:text-amber-700 transition-colors line-clamp-1">
                     {profile.name}
                   </h3>
                   {getStatusBadge(profile.status)}
                 </div>
 
                 {/* Metrics */}
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80">
-                  <div className="bg-slate-900/60 rounded-lg p-2 text-center border border-slate-800/60">
-                    <span className="text-xs font-bold text-slate-200 block">{profile.color_count}</span>
-                    <span className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
-                      <Palette className="w-2.5 h-2.5" /> Colors
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-amber-100">
+                  <div className="bg-[#FFFDE8] rounded-xl p-2 text-center border border-amber-200/80">
+                    <span className="text-xs font-black text-slate-900 block font-mono">{profile.color_count}</span>
+                    <span className="text-[10px] text-slate-600 flex items-center justify-center gap-1 font-bold">
+                      <Palette className="w-3 h-3 text-amber-600" /> Colors
                     </span>
                   </div>
-                  <div className="bg-slate-900/60 rounded-lg p-2 text-center border border-slate-800/60">
-                    <span className="text-xs font-bold text-slate-200 block">{profile.logo_count}</span>
-                    <span className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
-                      <Layers className="w-2.5 h-2.5" /> Logos
+                  <div className="bg-[#FFFDE8] rounded-xl p-2 text-center border border-amber-200/80">
+                    <span className="text-xs font-black text-slate-900 block font-mono">{profile.logo_count}</span>
+                    <span className="text-[10px] text-slate-600 flex items-center justify-center gap-1 font-bold">
+                      <Layers className="w-3 h-3 text-amber-600" /> Logos
                     </span>
                   </div>
-                  <div className="bg-slate-900/60 rounded-lg p-2 text-center border border-slate-800/60">
-                    <span className="text-xs font-bold text-slate-200 block">{profile.rule_count}</span>
-                    <span className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
-                      <FileText className="w-2.5 h-2.5" /> Rules
+                  <div className="bg-[#FFFDE8] rounded-xl p-2 text-center border border-amber-200/80">
+                    <span className="text-xs font-black text-slate-900 block font-mono">{profile.rule_count}</span>
+                    <span className="text-[10px] text-slate-600 flex items-center justify-center gap-1 font-bold">
+                      <FileText className="w-3 h-3 text-amber-600" /> Rules
                     </span>
                   </div>
                 </div>
               </div>
 
               {/* Card Footer */}
-              <div className="flex items-center justify-between pt-2 text-xs text-slate-500">
+              <div className="flex items-center justify-between pt-2 text-xs text-slate-500 font-medium">
                 <span>Updated {new Date(profile.updated_at).toLocaleDateString()}</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={(e) => handleDelete(profile.id, e)}
                     disabled={deletingId === profile.id}
-                    className="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-slate-800/60 transition-colors"
+                    className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
                     title="Delete Brand Profile"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                  <span className="text-indigo-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 font-medium">
+                  <span className="text-amber-700 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
                     Review <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>

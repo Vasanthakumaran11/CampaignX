@@ -83,3 +83,71 @@ export interface BrandProfileStatus {
   raw_guideline_file_path?: string;
   updated_at?: string;
 }
+
+export type CampaignChannel = 'instagram' | 'linkedin' | 'email' | 'banner_ad' | 'twitter_x' | 'other';
+export type VariantType = 'headline' | 'body' | 'cta' | 'full_post' | 'subject_line';
+export type VariantStatus = 'generated' | 'saved' | 'discarded';
+
+export interface CampaignBrief {
+  id: string;
+  brand_profile_id: string;
+  user_id: string;
+  campaign_goal: string;
+  target_audience: string;
+  channel: CampaignChannel;
+  product_or_feature: string;
+  additional_context?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeneratedCopyVariant {
+  id: string;
+  campaign_brief_id: string;
+  variant_text: string;
+  variant_type: VariantType;
+  generation_index: number;
+  grounding_voice_sample_ids: string[];
+  status: VariantStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FlagType = 
+  | 'restricted_term_match'
+  | 'unsubstantiated_claim'
+  | 'missing_disclaimer'
+  | 'off_tone'
+  | 'competitor_comparison'
+  | 'regulatory_risk';
+
+export type FlagSeverity = 'low' | 'medium' | 'high';
+export type AuditStatus = 'pass' | 'warning' | 'fail';
+
+export interface ComplianceFlag {
+  id?: string;
+  audit_id?: string;
+  flag_type: FlagType;
+  severity: FlagSeverity;
+  flagged_text_snippet: string;
+  start_offset?: number | null;
+  end_offset?: number | null;
+  explanation: string;
+  source_rule_id?: string | null;
+  created_at?: string;
+}
+
+export interface ComplianceAudit {
+  id: string;
+  variant_id?: string | null;
+  raw_text?: string | null;
+  brand_profile_id: string;
+  user_id: string;
+  overall_score: number;
+  tone_similarity_score: number;
+  status: AuditStatus;
+  flags: ComplianceFlag[];
+  created_at?: string;
+  updated_at?: string;
+}
+
