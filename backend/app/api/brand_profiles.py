@@ -360,22 +360,29 @@ async def update_brand_logo_label(
 
 
 @router.patch("/{profile_id}/rules/{rule_id}", response_model=BrandGuidelineRuleResponse)
-async def update_brand_rule_category(
+async def update_brand_rule(
     profile_id: str,
     rule_id: str,
     payload: BrandGuidelineRuleUpdate
 ):
     """
-    Reclassify an extracted rule category (tone/logo_usage/color_usage/restricted_terms/uncategorized).
+    Update an extracted rule statement text or reclassify its category.
     """
     client = get_supabase_admin()
     if not client:
         raise HTTPException(status_code=503, detail="Supabase not configured.")
 
+    update_data = {}
+    if payload.category is not None:
+        update_data["category"] = payload.category
+    if payload.rule_text is not None and payload.rule_text.strip():
+        update_data["rule_text"] = payload.rule_text.strip()
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update.")
+
     try:
-        res = client.table("brand_guideline_rules").update({
-            "category": payload.category
-        }).eq("id", rule_id).eq("brand_profile_id", profile_id).execute()
+        res = client.table("brand_guideline_rules").update(update_data).eq("id", rule_id).eq("brand_profile_id", profile_id).execute()
 
         if not res.data or len(res.data) == 0:
             raise HTTPException(status_code=404, detail="Rule record not found.")
@@ -394,6 +401,40 @@ async def update_brand_rule_category(
         raise
     except Exception as e:
         logger.error(f"Error updating rule {rule_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{profile_id}/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_brand_rule(profile_id: str, rule_id: str):
+    """
+    Delete an individual extracted rule statement.
+    """
+    client = get_supabase_admin()
+    if not client:
+        raise HTTPException(status_code=503, detail="Supabase not configured.")
+
+    try:
+        client.table("brand_guideline_rules").delete().eq("id", rule_id).eq("brand_profile_id", profile_id).execute()
+        return None
+    except Exception as e:
+        logger.error(f"Error deleting rule {rule_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{profile_id}/voice-samples/{sample_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_brand_voice_sample(profile_id: str, sample_id: str):
+    """
+    Delete an individual voice sample anchor.
+    """
+    client = get_supabase_admin()
+    if not client:
+        raise HTTPException(status_code=503, detail="Supabase not configured.")
+
+    try:
+        client.table("brand_voice_samples").delete().eq("id", sample_id).eq("brand_profile_id", profile_id).execute()
+        return None
+    except Exception as e:
+        logger.error(f"Error deleting voice sample {sample_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

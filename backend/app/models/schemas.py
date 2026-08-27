@@ -78,6 +78,10 @@ class BrandGuidelineRuleUpdate(BaseModel):
         None,
         description="Category: tone, logo_usage, color_usage, restricted_terms, uncategorized"
     )
+    rule_text: Optional[str] = Field(
+        None,
+        description="Updated rule text statement"
+    )
 
 
 class BrandGuidelineRuleResponse(BrandGuidelineRuleBase):
@@ -122,3 +126,85 @@ class BrandProfileDetailResponse(BaseModel):
     rules: List[BrandGuidelineRuleResponse] = []
     created_at: datetime
     updated_at: datetime
+
+
+# ============================================================================
+# Phase 2: Campaign Briefs & Copy Variant Schemas
+# ============================================================================
+
+class CampaignBriefBase(BaseModel):
+    brand_profile_id: str
+    campaign_goal: str
+    target_audience: str
+    channel: str = Field(..., description="instagram | linkedin | email | banner_ad | twitter_x | other")
+    product_or_feature: str
+    additional_context: Optional[str] = None
+
+
+class CampaignBriefCreate(CampaignBriefBase):
+    pass
+
+
+class CampaignBriefResponse(CampaignBriefBase):
+    id: str
+    user_id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class GeneratedCopyVariantBase(BaseModel):
+    variant_text: str
+    variant_type: str = Field(..., description="headline | body | cta | full_post | subject_line")
+    generation_index: int = 1
+    grounding_voice_sample_ids: List[str] = []
+    status: str = Field("generated", description="generated | saved | discarded")
+
+
+class GeneratedCopyVariantUpdate(BaseModel):
+    variant_text: Optional[str] = None
+    status: Optional[str] = Field(None, description="generated | saved | discarded")
+
+
+class GeneratedCopyVariantResponse(GeneratedCopyVariantBase):
+    id: str
+    campaign_brief_id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+# ============================================================================
+# Phase 3: Compliance Engine & Audit Schemas
+# ============================================================================
+
+class ComplianceAuditRequest(BaseModel):
+    variant_id: Optional[str] = Field(None, description="Optional Phase 2 copy variant ID")
+    text: Optional[str] = Field(None, description="Optional raw copy text to audit")
+
+
+class ComplianceFlagResponse(BaseModel):
+    id: Optional[str] = None
+    audit_id: Optional[str] = None
+    flag_type: str = Field(..., description="restricted_term_match | unsubstantiated_claim | missing_disclaimer | off_tone | competitor_comparison | regulatory_risk")
+    severity: str = Field(..., description="low | medium | high")
+    flagged_text_snippet: str
+    start_offset: Optional[int] = None
+    end_offset: Optional[int] = None
+    explanation: str
+    source_rule_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class ComplianceAuditResponse(BaseModel):
+    id: str
+    variant_id: Optional[str] = None
+    raw_text: Optional[str] = None
+    brand_profile_id: str
+    user_id: str
+    overall_score: float
+    tone_similarity_score: float
+    status: str = Field(..., description="pass | warning | fail")
+    flags: List[ComplianceFlagResponse] = []
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+

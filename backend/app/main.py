@@ -30,12 +30,10 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("Supabase credentials not configured or incomplete. Update backend/.env with actual keys.")
 
-    # 2. Prewarm / Load Embedding Model
-    try:
-        get_embedding_model()
-        logger.info("Embedding service ready.")
-    except Exception as e:
-        logger.warning(f"Embedding model could not be pre-loaded at startup: {e}")
+    # 2. Embedding model will be loaded on demand (or background thread)
+    import threading
+    threading.Thread(target=get_embedding_model, daemon=True).start()
+    logger.info("Embedding service background initialization triggered.")
 
     yield
 
@@ -59,9 +57,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.brand_profiles import router as brand_profiles_router
+from app.api.ingestion import router as ingestion_router
+from app.api.campaign_briefs import router as campaign_briefs_router
+from app.api.compliance import router as compliance_router
+
 # Include Routers
 app.include_router(brand_profiles_router)
 app.include_router(ingestion_router)
+app.include_router(campaign_briefs_router)
+app.include_router(compliance_router)
 
 
 @app.get("/health", tags=["Health"])

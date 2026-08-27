@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     BASE_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     FINE_TUNED_MODEL_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models", "tone-encoder")
 
+    # LLM Generation
+    GEMINI_API_KEY: Optional[str] = None
+
     # Storage Buckets
     BUCKET_GUIDELINES: str = "brand-guidelines"
     BUCKET_LOGOS: str = "brand-logos"

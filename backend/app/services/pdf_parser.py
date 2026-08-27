@@ -108,7 +108,7 @@ def parse_pdf_content(pdf_bytes: bytes) -> Tuple[List[Dict[str, Any]], List[Dict
     return rules, images
 
 
-def process_brand_guideline_pdf(profile_id: str, pdf_bytes: bytes, filename: str) -> None:
+async def process_brand_guideline_pdf(profile_id: str, pdf_bytes: bytes, filename: str) -> None:
     """
     Background Task pipeline that runs PDF ingestion, image color extraction,
     tone embedding generation, and records insertion into Supabase.
