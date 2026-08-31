@@ -11,7 +11,9 @@ from app.models.schemas import (
 )
 from app.services.supabase_client import get_supabase_admin
 from app.services.retrieval_service import retrieve_grounding_context
-from app.services.generation_service import generate_copy_variants
+from app.services.generation_service import generate_copy_variants, revise_variant
+from pydantic import BaseModel as PydanticBase
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -293,3 +295,110 @@ async def delete_variant(id: str, variant_id: str):
     except Exception as e:
         logger.error(f"Error deleting variant {variant_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# 9. POST /api/campaign-briefs/{id}/variants/{variant_id}/revise
+# ============================================================================
+class ReviseVariantRequest(PydanticBase):
+    instruction: str
+
+class ReviseVariantResponse(PydanticBase):
+    original_text: str
+    revised_text: str
+    instruction: str
+    variant_id: str
+
+@router.post("/{id}/variants/{variant_id}/revise", response_model=ReviseVariantResponse)
+async def revise_variant_copy(
+    id: str,
+    variant_id: str,
+    payload: ReviseVariantRequest
+):
+    """POST /revise — Takes a variant + user instruction, returns brand-grounded revised copy."""
+    client = get_supabase_admin()
+    if not client:
+        raise HTTPException(status_code=503, detail="Supabase not configured.")
+
+    # Load the variant
+    v_res = client.table("generated_copy_variants").select("*").eq("id", variant_id).eq("campaign_brief_id", id).execute()
+    if not v_res.data:
+        raise HTTPException(status_code=404, detail="Variant not found.")
+    variant = v_res.data[0]
+    original_text = variant["variant_text"]
+
+    # Load the brief
+    b_res = client.table("campaign_briefs").select("*").eq("id", id).execute()
+    if not b_res.data:
+        raise HTTPException(status_code=404, detail="Campaign brief not found.")
+    brief = b_res.data[0]
+
+    # RAG context
+    query_string = f"{brief['campaign_goal']} {brief['target_audience']} {brief['product_or_feature']} {payload.instruction}"
+    retrieved_context = retrieve_grounding_context(
+        brand_profile_id=brief["brand_profile_id"],
+        query_text=query_string,
+        top_k=5
+    )
+
+    try:
+        revised_text = revise_variant(
+            original_text=original_text,
+            revision_instruction=payload.instruction,
+            brief=brief,
+            retrieved_context=retrieved_context
+        )
+    except Exception as e:
+        logger.error(f"Revision error for variant {variant_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Revision failed: {str(e)}")
+
+    # Save the revised text back to the variant
+    try:
+        client.table("generated_copy_variants").update({"variant_text": revised_text, "status": "generated"}).eq("id", variant_id).execute()
+    except Exception as e:
+        logger.warning(f"Could not persist revised variant text: {e}")
+
+    return ReviseVariantResponse(
+        original_text=original_text,
+        revised_text=revised_text,
+        instruction=payload.instruction,
+        variant_id=variant_id
+    )
+
+
+# ============================================================================
+# 10. POST /api/campaign-briefs/{id}/variants/{variant_id}/approve
+# ============================================================================
+class ApproveVariantResponse(PydanticBase):
+    variant_id: str
+    status: str
+    approved_at: str
+    message: str
+
+@router.post("/{id}/variants/{variant_id}/approve", response_model=ApproveVariantResponse)
+async def approve_variant(
+    id: str,
+    variant_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Formally approve a copy variant — sets status to 'saved' with approval timestamp."""
+    client = get_supabase_admin()
+    if not client:
+        raise HTTPException(status_code=503, detail="Supabase not configured.")
+
+    v_res = client.table("generated_copy_variants").select("id").eq("id", variant_id).eq("campaign_brief_id", id).execute()
+    if not v_res.data:
+        raise HTTPException(status_code=404, detail="Variant not found.")
+
+    approved_at = datetime.now(timezone.utc).isoformat()
+    try:
+        client.table("generated_copy_variants").update({"status": "saved"}).eq("id", variant_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Approval failed: {str(e)}")
+
+    return ApproveVariantResponse(
+        variant_id=variant_id,
+        status="saved",
+        approved_at=approved_at,
+        message="Variant approved successfully and marked as human-approved."
+    )

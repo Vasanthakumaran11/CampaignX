@@ -14,6 +14,22 @@ FAIL_THRESHOLD = 50.0
 HIGH_SEVERITY_PENALTY = 25.0
 MEDIUM_SEVERITY_PENALTY = 10.0
 
+# CTA keywords — if none of these appear, flag as missing CTA
+CTA_KEYWORDS = [
+    "click", "get started", "try", "download", "sign up", "sign-up", "signup",
+    "register", "learn more", "discover", "explore", "shop", "buy", "order",
+    "book", "subscribe", "start", "join", "contact", "call", "visit", "access",
+    "claim", "grab", "unlock", "activate", "apply", "request", "get",
+    "tap", "swipe", "follow", "share", "link in bio", "link in comments",
+    "→", "➔", "▶"
+]
+
+
+def check_cta_presence(text: str) -> bool:
+    """Returns True if the text contains at least one call-to-action keyword."""
+    text_lower = text.lower()
+    return any(kw in text_lower for kw in CTA_KEYWORDS)
+
 
 def split_text_into_sentences(text: str) -> List[Tuple[str, int, int]]:
     """
@@ -124,6 +140,19 @@ def run_text_compliance_audit(
                 "source_rule_id": None
             })
 
+    # 5. CTA Presence Check
+    cta_present = check_cta_presence(clean_text)
+    if not cta_present:
+        flags.append({
+            "flag_type": "missing_cta",
+            "severity": "medium",
+            "flagged_text_snippet": clean_text[:80] + "..." if len(clean_text) > 80 else clean_text,
+            "start_offset": None,
+            "end_offset": None,
+            "explanation": "No call-to-action detected. Add a directive phrase such as 'Get started', 'Learn more', or 'Sign up' to drive user action.",
+            "source_rule_id": None
+        })
+
     # 5. Compute Weighted Overall Score (0-100)
     high_flags_count = sum(1 for f in flags if f["severity"] == "high")
     med_flags_count = sum(1 for f in flags if f["severity"] == "medium")
@@ -185,7 +214,7 @@ def run_text_compliance_audit(
         except Exception as e:
             logger.error(f"Error persisting compliance audit to database: {e}")
 
-    logger.info(f"Compliance audit complete for brand {brand_profile_id}: Score {overall_score}, Status '{audit_status}', Flags: {len(flags)}")
+    logger.info(f"Compliance audit complete for brand {brand_profile_id}: Score {overall_score}, Status '{audit_status}', Flags: {len(flags)}, CTA Present: {cta_present}")
 
     return {
         "id": audit_id or "mock-audit-id",
@@ -196,5 +225,6 @@ def run_text_compliance_audit(
         "overall_score": overall_score,
         "tone_similarity_score": tone_similarity,
         "status": audit_status,
+        "cta_present": cta_present,
         "flags": created_flags if created_flags else flags
     }

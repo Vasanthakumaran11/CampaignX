@@ -57,16 +57,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+os.makedirs(static_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 from app.api.brand_profiles import router as brand_profiles_router
 from app.api.ingestion import router as ingestion_router
 from app.api.campaign_briefs import router as campaign_briefs_router
 from app.api.compliance import router as compliance_router
+from app.api.poster_generation import router as poster_generation_router
+from app.api.visual_compliance import router as visual_compliance_router
 
 # Include Routers
 app.include_router(brand_profiles_router)
 app.include_router(ingestion_router)
 app.include_router(campaign_briefs_router)
 app.include_router(compliance_router)
+app.include_router(poster_generation_router)
+app.include_router(visual_compliance_router)
 
 
 @app.get("/health", tags=["Health"])

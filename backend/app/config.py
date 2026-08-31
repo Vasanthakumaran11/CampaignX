@@ -33,6 +33,9 @@ class Settings(BaseSettings):
 
     # LLM Generation
     GEMINI_API_KEY: Optional[str] = None
+    GENERATION_PROVIDER: str = "ollama"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.2"
 
     # Storage Buckets
     BUCKET_GUIDELINES: str = "brand-guidelines"
