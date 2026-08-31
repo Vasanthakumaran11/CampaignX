@@ -8,8 +8,7 @@ Architecture: YOLO (Ultralytics compatible)
 Fallback: OpenCV multi-scale template matching (TM_CCOEFF_NORMED >= 0.35)
 
 Strict Detection Rule: Returns True ONLY when a logo is genuinely detected by the
-pretrained YOLO model OR confirmed by multi-scale template matching against the
-brand's stored logo. No fake saliency fallback bounding boxes or silent positive defaults.
+brand template matcher against the brand's stored logo OR pretrained YOLO model.
 """
 
 import os
@@ -43,7 +42,7 @@ def get_logo_detector() -> YOLO:
 def _template_match_logo(poster_path: str, brand_logo_path: str) -> tuple[bool, dict | None]:
     """
     Multi-scale OpenCV template matching fallback.
-    Tries 15 different scales of the brand logo against the poster.
+    Tries 25 different scales of the brand logo against the poster.
     Returns (found: bool, bbox: dict | None) using TM_CCOEFF_NORMED.
     """
     if not os.path.exists(poster_path) or not os.path.exists(brand_logo_path):
@@ -72,7 +71,7 @@ def _template_match_logo(poster_path: str, brand_logo_path: str) -> tuple[bool, 
         best_val = -1.0
         best_box = None
 
-        for scale in np.linspace(0.05, 0.55, 20):
+        for scale in np.linspace(0.05, 0.75, 25):
             rw = int(pw * scale)
             rh = int(lh * (rw / max(1, lw)))
             if rw < 16 or rh < 16 or rw > pw or rh > ph:
@@ -112,49 +111,48 @@ def detect_logo_regions(
     """
     Detects logo bounding boxes in an image.
 
-    Pipeline:
-      1. YOLO pretrained model (haydarkadioglu/brand-eye) at conf_threshold.
-      2. If YOLO finds nothing AND brand_logo_path is provided:
-         → OpenCV multi-scale template matching fallback.
-
-    Returns (logo_detected: bool, bbox_dict: {"x","y","w","h","confidence"} | None).
+    Strategy:
+      1. If brand_logo_path is provided, run multi-scale template matching for the
+         brand's actual registered logo. If high-confidence match found (>= 0.35),
+         return it immediately (accurate for custom institutional/brand logos).
+      2. If not matched, query pretrained YOLO logo detector (haydarkadioglu/brand-eye).
+      3. Return (logo_detected: bool, bbox_dict: {"x","y","w","h","confidence"} | None).
     """
     if not os.path.exists(image_path):
         return False, None
 
-    # --- Step 1: YOLO Detection ---
-    try:
-        model = get_logo_detector()
-        results = model.predict(image_path, conf=conf_threshold, verbose=False)
-
-        for r in results:
-            boxes = r.boxes
-            if len(boxes) > 0:
-                best_box = boxes[0]
-                xywh = best_box.xywh[0].tolist()
-                bbox = {
-                    "x": int(xywh[0] - xywh[2] / 2),
-                    "y": int(xywh[1] - xywh[3] / 2),
-                    "w": int(xywh[2]),
-                    "h": int(xywh[3]),
-                    "confidence": float(best_box.conf[0])
-                }
-                logger.info(f"[YOLO] Logo detected: {bbox}")
-                return True, bbox
-
-        logger.info("[-] YOLO: No logo detected. Trying template matching fallback...")
-
-    except Exception as e:
-        logger.warning(f"[!] YOLO logo detection error: {e}. Trying template matching fallback...")
-
-    # --- Step 2: Template Matching Fallback ---
+    # 1. Prioritize registered brand logo matching
     if brand_logo_path and os.path.exists(brand_logo_path):
-        found, bbox = _template_match_logo(image_path, brand_logo_path)
-        if found:
-            logger.info(f"[Template Match] Logo found via fallback: {bbox}")
-            return True, bbox
-    else:
-        logger.info("[-] No brand_logo_path provided — template matching fallback skipped.")
+        tmpl_found, tmpl_box = _template_match_logo(image_path, brand_logo_path)
+        if tmpl_found and tmpl_box:
+            logger.info(f"[+] Logo detected via brand template matcher: {tmpl_box}")
+            return True, tmpl_box
 
-    logger.info("[-] No logo detected by YOLO or template matching.")
+    # 2. Fallback to YOLO model
+    try:
+        detector = get_logo_detector()
+        results = detector.predict(source=image_path, conf=conf_threshold, verbose=False)
+        boxes = []
+        for r in results:
+            for b in r.boxes:
+                xyxy = b.xyxy[0].tolist()
+                conf = float(b.conf[0])
+                x, y, x2, y2 = xyxy
+                w = x2 - x
+                h = y2 - y
+                boxes.append({
+                    "x": int(x),
+                    "y": int(y),
+                    "w": int(w),
+                    "h": int(h),
+                    "confidence": conf
+                })
+
+        if boxes:
+            boxes.sort(key=lambda b: b["confidence"], reverse=True)
+            logger.info(f"[+] Logo detected via YOLO: {boxes[0]}")
+            return True, boxes[0]
+    except Exception as e:
+        logger.warning(f"[YOLO Logo Detector] Error: {e}")
+
     return False, None
