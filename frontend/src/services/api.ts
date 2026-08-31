@@ -9,7 +9,9 @@ import {
   RuleCategory,
   CampaignBrief,
   GeneratedCopyVariant,
-  ComplianceAudit
+  ComplianceAudit,
+  PosterGeneration,
+  VisualComplianceAudit
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -104,6 +106,27 @@ export async function uploadVoiceSamples(profileId: string, sampleText: string):
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to upload voice samples');
+  }
+  return res.json();
+}
+
+export async function saveManualBrandProfile(profileId: string, payload: {
+  name?: string;
+  brand_colors: Array<{ hex_code: string; usage_label?: string }>; 
+  tone: string;
+  voice_samples: string[];
+  restricted_rules: Array<{ rule_text: string; category?: string }>;
+  logo_file_name: string;
+  logo_file_size_bytes: number;
+}): Promise<BrandProfileStatus> {
+  const res = await fetch(`${API_BASE_URL}/api/brand-profiles/${profileId}/manual-entry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to save manual brand profile');
   }
   return res.json();
 }
@@ -290,6 +313,34 @@ export async function deleteCopyVariant(briefId: string, variantId: string): Pro
   }
 }
 
+export async function reviseVariant(
+  briefId: string,
+  variantId: string,
+  instruction: string
+): Promise<{ original_text: string; revised_text: string; instruction: string; variant_id: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/campaign-briefs/${briefId}/variants/${variantId}/revise`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ instruction }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to revise variant');
+  }
+  return res.json();
+}
+
+export async function approveVariant(briefId: string, variantId: string): Promise<{ variant_id: string; status: string; approved_at: string; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/campaign-briefs/${briefId}/variants/${variantId}/approve`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to approve variant');
+  }
+  return res.json();
+}
+
 // ============================================================================
 // Phase 3: Compliance Engine API Helpers
 // ============================================================================
@@ -336,4 +387,55 @@ export async function getVariantLatestCompliance(briefId: string, variantId: str
   }
   return res.json();
 }
+
+// ============================================================================
+// Phase 4: Poster Generation & Visual Compliance API Helpers
+// ============================================================================
+
+export async function generatePosterForBrief(
+  briefId: string,
+  customPrompt?: string,
+  overlayText?: string
+): Promise<PosterGeneration> {
+  const res = await fetch(`${API_BASE_URL}/api/campaign-briefs/${briefId}/generate-poster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ custom_prompt: customPrompt, overlay_text: overlayText }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to generate poster for campaign brief');
+  }
+  return res.json();
+}
+
+export async function auditUploadedPoster(
+  brandId: string,
+  imageFile: File,
+  slogan?: string
+): Promise<VisualComplianceAudit> {
+  const formData = new FormData();
+  formData.append('file', imageFile);
+  if (slogan) formData.append('slogan', slogan);
+
+  const res = await fetch(`${API_BASE_URL}/api/brand-profiles/${brandId}/visual-compliance/audit`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to audit uploaded poster image');
+  }
+  return res.json();
+}
+
+export async function getVisualAuditDetails(auditId: string): Promise<VisualComplianceAudit> {
+  const res = await fetch(`${API_BASE_URL}/api/visual-compliance/audits/${auditId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch visual compliance audit details');
+  }
+  return res.json();
+}
+
 

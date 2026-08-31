@@ -119,7 +119,8 @@ export type FlagType =
   | 'missing_disclaimer'
   | 'off_tone'
   | 'competitor_comparison'
-  | 'regulatory_risk';
+  | 'regulatory_risk'
+  | 'missing_cta';
 
 export type FlagSeverity = 'low' | 'medium' | 'high';
 export type AuditStatus = 'pass' | 'warning' | 'fail';
@@ -146,8 +147,59 @@ export interface ComplianceAudit {
   overall_score: number;
   tone_similarity_score: number;
   status: AuditStatus;
+  cta_present?: boolean | null;
   flags: ComplianceFlag[];
   created_at?: string;
   updated_at?: string;
 }
+
+export interface ReviseVariantResult {
+  original_text: string;
+  revised_text: string;
+  instruction: string;
+  variant_id: string;
+}
+
+export interface ApproveVariantResult {
+  variant_id: string;
+  status: string;
+  approved_at: string;
+  message: string;
+}
+
+export interface PosterGeneration {
+  id: string;
+  visual_audit_id?: string | null;
+  campaign_brief_id?: string | null;
+  brand_profile_id: string;
+  background_prompt: string;
+  final_poster_path: string;
+  signed_poster_url?: string;
+  logo_placement?: { x: number; y: number; width: number; height: number };
+  overlay_text?: string | null;
+  status: 'generating' | 'ready' | 'failed';
+  created_at: string;
+}
+
+export interface VisualComplianceAudit {
+  id: string;
+  poster_generation_id?: string | null;
+  uploaded_image_path?: string | null;
+  signed_image_url?: string;
+  brand_profile_id: string;
+  logo_detected: boolean;
+  logo_detector_model?: string;
+  logo_match_score: number;
+  logo_bbox?: { x: number; y: number; w: number; h: number; confidence?: number };
+  color_match_score: number;
+  text_match_result?: {
+    extracted_text: string;
+    matches_approved_slogan: boolean;
+    flags: string[];
+  };
+  overall_visual_score: number;
+  status: AuditStatus;
+  created_at: string;
+}
+
 

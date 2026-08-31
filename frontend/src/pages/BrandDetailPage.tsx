@@ -10,7 +10,10 @@ import {
   FileDown, 
   ExternalLink,
   ShieldCheck,
-  Wand2
+  Wand2,
+  Image as ImageIcon,
+  BarChart2,
+  Edit3
 } from 'lucide-react';
 import { BrandProfileDetail, BrandColor, BrandLogo, BrandGuidelineRule, ProfileStatus } from '../types';
 import { 
@@ -162,9 +165,30 @@ export const BrandDetailPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => navigate(`/brands/${id}/dashboard`)}
+          >
+            <BarChart2 className="w-3.5 h-3.5 mr-1 text-indigo-500" /> Dashboard
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/brands/${id}/revision`)}
+          >
+            <Edit3 className="w-3.5 h-3.5 mr-1 text-violet-500" /> Revision Workspace
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => navigate(`/brands/${id}/compliance/audit`)}
           >
             <ShieldCheck className="w-3.5 h-3.5 mr-1 text-amber-600" /> Audit Copy
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/brands/${id}/visual-compliance/audit`)}
+          >
+            <ImageIcon className="w-3.5 h-3.5 mr-1 text-amber-600" /> Audit Poster
           </Button>
           <Button variant="secondary" size="sm" onClick={() => loadProfile(false)}>
             <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh

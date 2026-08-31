@@ -143,6 +143,32 @@ export const CampaignBriefWizardPage: React.FC = () => {
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <Users className="w-4 h-4 text-amber-600" /> Target Audience <span className="text-rose-600">*</span>
             </label>
+            {/* Persona Presets */}
+            <div className="flex flex-wrap gap-1.5 pb-1">
+              {[
+                { label: '🧑‍💻 Software Engineers', value: 'Mid-level software engineers seeking career growth and upskilling' },
+                { label: '📊 Marketing Managers', value: 'B2B marketing managers at mid-size companies driving lead generation' },
+                { label: '🚀 Startup Founders', value: 'Early-stage startup founders building their first product' },
+                { label: '🎓 Students & Graduates', value: 'Recent graduates and students entering the job market' },
+                { label: '💼 HR Professionals', value: 'HR professionals and talent acquisition managers at enterprises' },
+                { label: '👩‍💼 Senior Executives', value: 'C-suite and senior executives at Fortune 500 companies' },
+                { label: '🛒 E-commerce Shoppers', value: 'Online shoppers aged 25–40 looking for premium products' },
+                { label: '🏃 Health Enthusiasts', value: 'Fitness-conscious millennials focused on wellness and lifestyle' },
+              ].map(p => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => setTargetAudience(p.value)}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all ${
+                    targetAudience === p.value
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                      : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 hover:border-amber-400'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
             <input
               type="text"
               placeholder="e.g. Mid-level software engineers seeking career advancement"

@@ -18,7 +18,8 @@ import {
   Copy,
   ExternalLink,
   Eye,
-  ShieldCheck
+  ShieldCheck,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -32,9 +33,12 @@ import {
   deleteCopyVariant,
   fetchBrandProfile,
   runComplianceAudit,
-  getVariantLatestCompliance
+  getVariantLatestCompliance,
+  reviseVariant,
+  approveVariant
 } from '../services/api';
 import { CampaignBrief, GeneratedCopyVariant, VariantType, BrandProfileDetail, ComplianceAudit } from '../types';
+import { Wand2 as ReviseIcon } from 'lucide-react';
 
 interface GroupedCardConfig {
   type: VariantType;
@@ -71,6 +75,50 @@ export const CampaignVariantsPage: React.FC = () => {
   // Compliance Audit state
   const [auditsMap, setAuditsMap] = useState<Record<string, ComplianceAudit>>({});
   const [auditingVariantId, setAuditingVariantId] = useState<string | null>(null);
+
+  // Revise state
+  const [revisingVariantId, setRevisingVariantId] = useState<string | null>(null);
+  const [reviseInputMap, setReviseInputMap] = useState<Record<string, string>>({});
+  const [showReviseInputId, setShowReviseInputId] = useState<string | null>(null);
+
+  // Approve state
+  const [approvingVariantId, setApprovingVariantId] = useState<string | null>(null);
+  const [approvedVariants, setApprovedVariants] = useState<Set<string>>(new Set());
+
+  const handleReviseVariant = async (variantId: string, briefId: string) => {
+    const instruction = reviseInputMap[variantId]?.trim();
+    if (!instruction) return;
+    setRevisingVariantId(variantId);
+    try {
+      const result = await reviseVariant(briefId, variantId, instruction);
+      setVariants(prev =>
+        prev.map(v => v.id === variantId ? { ...v, variant_text: result.revised_text } : v)
+      );
+      setReviseInputMap(prev => ({ ...prev, [variantId]: '' }));
+      setShowReviseInputId(null);
+      // Clear old audit since text changed
+      setAuditsMap(prev => { const n = { ...prev }; delete n[variantId]; return n; });
+    } catch (err) {
+      console.error('Revision failed:', err);
+    } finally {
+      setRevisingVariantId(null);
+    }
+  };
+
+  const handleApproveVariant = async (variantId: string, briefId: string) => {
+    setApprovingVariantId(variantId);
+    try {
+      await approveVariant(briefId, variantId);
+      setApprovedVariants(prev => new Set(prev).add(variantId));
+      setVariants(prev =>
+        prev.map(v => v.id === variantId ? { ...v, status: 'saved' } : v)
+      );
+    } catch (err) {
+      console.error('Approval failed:', err);
+    } finally {
+      setApprovingVariantId(null);
+    }
+  };
 
   const handleAuditVariant = async (variantId: string) => {
     if (!brandProfileId) return;
@@ -201,6 +249,13 @@ export const CampaignVariantsPage: React.FC = () => {
             onClick={() => navigate(`/brands/${brandProfileId}/campaigns/new`)}
           >
             <Wand2 className="w-3.5 h-3.5 mr-1 text-amber-400" /> New Campaign Brief
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/brands/${brandProfileId}/campaigns/${briefId}/poster`)}
+          >
+            <ImageIcon className="w-3.5 h-3.5 mr-1 text-amber-600" /> Generate Poster
           </Button>
         </div>
       </div>
@@ -394,6 +449,58 @@ export const CampaignVariantsPage: React.FC = () => {
                               {variantAudit && (
                                 <div className="pt-2">
                                   <ComplianceAuditPanel audit={variantAudit} compact={true} />
+                                </div>
+                              )}
+
+                              {/* Revise UI */}
+                              {showReviseInputId === variant.id ? (
+                                <div className="pt-2 space-y-2" onClick={e => e.stopPropagation()}>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Make it shorter and remove the guarantee claim..."
+                                      value={reviseInputMap[variant.id] || ''}
+                                      onChange={e => setReviseInputMap(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                                      onKeyDown={e => { if (e.key === 'Enter') handleReviseVariant(variant.id, briefId!); }}
+                                      className="flex-1 text-xs border border-violet-300 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-violet-400"
+                                      autoFocus
+                                    />
+                                    <button
+                                      onClick={() => handleReviseVariant(variant.id, briefId!)}
+                                      disabled={!reviseInputMap[variant.id]?.trim() || revisingVariantId === variant.id}
+                                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 flex items-center gap-1 transition-colors"
+                                    >
+                                      {revisingVariantId === variant.id ? <RotateCw className="w-3 h-3 animate-spin" /> : <ReviseIcon className="w-3 h-3" />}
+                                      Revise
+                                    </button>
+                                    <button
+                                      onClick={() => setShowReviseInputId(null)}
+                                      className="px-2 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 border border-slate-200 bg-white"
+                                    >✕</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="pt-1.5 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => setShowReviseInputId(variant.id)}
+                                    className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition-all flex items-center gap-1"
+                                  >
+                                    <ReviseIcon className="w-3 h-3" /> AI Revise
+                                  </button>
+                                  <button
+                                    onClick={() => handleApproveVariant(variant.id, briefId!)}
+                                    disabled={approvingVariantId === variant.id || approvedVariants.has(variant.id)}
+                                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                                      approvedVariants.has(variant.id) || variant.status === 'saved'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                        : 'bg-white hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 border-slate-200 hover:border-emerald-300'
+                                    }`}
+                                  >
+                                    {approvingVariantId === variant.id
+                                      ? <RotateCw className="w-3 h-3 animate-spin" />
+                                      : <CheckCircle2 className="w-3 h-3" />}
+                                    {approvedVariants.has(variant.id) || variant.status === 'saved' ? 'Approved' : 'Approve'}
+                                  </button>
                                 </div>
                               )}
                             </div>
