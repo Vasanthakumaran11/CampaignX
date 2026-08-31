@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, status, Header
 from app.models.schemas import (
     BrandProfileCreate,
+    BrandProfileManualCreate,
     BrandProfileSummaryResponse,
     BrandProfileDetailResponse,
     BrandProfileStatusResponse,
@@ -19,6 +20,7 @@ from app.services.supabase_client import (
     get_signed_url,
     delete_file_from_storage
 )
+from app.services.embedding_service import embed
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -100,6 +102,83 @@ async def create_brand_profile(
         raise
     except Exception as e:
         logger.error(f"Error creating brand profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{profile_id}/manual-entry", response_model=BrandProfileStatusResponse)
+async def create_brand_profile_manual_entry(
+    profile_id: str,
+    payload: BrandProfileManualCreate,
+):
+    """
+    Persist a brand profile created without a guideline PDF. This path requires a logo,
+    at least one color, a tone summary, at least two voice samples, and at least one rule.
+    """
+    client = get_supabase_admin()
+    if not client:
+        raise HTTPException(status_code=503, detail="Supabase not configured.")
+
+    prof_res = client.table("brand_profiles").select("id, name").eq("id", profile_id).execute()
+    if not prof_res.data or len(prof_res.data) == 0:
+        raise HTTPException(status_code=404, detail="Brand profile not found.")
+
+    logo_res = client.table("brand_logos").select("id").eq("brand_profile_id", profile_id).execute()
+    if not logo_res.data or len(logo_res.data) == 0:
+        raise HTTPException(status_code=400, detail="A logo is required before a manual brand profile can be saved.")
+
+    try:
+        for color in payload.brand_colors:
+            client.table("brand_colors").insert({
+                "brand_profile_id": profile_id,
+                "hex_code": color.hex_code.strip(),
+                "usage_label": (color.usage_label or "primary").lower() if color.usage_label else "primary",
+                "source": "sample_asset",
+                "frequency_rank": 1,
+            }).execute()
+
+        for sample in payload.voice_samples:
+            clean_text = sample.strip()
+            if clean_text:
+                emb = embed(clean_text)
+                client.table("brand_voice_samples").insert({
+                    "brand_profile_id": profile_id,
+                    "sample_text": clean_text,
+                    "embedding": emb,
+                    "source": "user_uploaded",
+                }).execute()
+
+        tone_rule = payload.tone.strip()
+        if tone_rule:
+            client.table("brand_guideline_rules").insert({
+                "brand_profile_id": profile_id,
+                "rule_text": tone_rule,
+                "category": "tone",
+                "page_number": None,
+            }).execute()
+
+        for rule in payload.restricted_rules:
+            clean_rule = rule.rule_text.strip()
+            if clean_rule:
+                client.table("brand_guideline_rules").insert({
+                    "brand_profile_id": profile_id,
+                    "rule_text": clean_rule,
+                    "category": rule.category or "restricted_terms",
+                    "page_number": None,
+                }).execute()
+
+        client.table("brand_profiles").update({"status": "ready"}).eq("id", profile_id).execute()
+
+        return BrandProfileStatusResponse(
+            id=profile_id,
+            status="ready",
+            name=prof_res.data[0].get("name"),
+            raw_guideline_file_path=prof_res.data[0].get("raw_guideline_file_path"),
+            updated_at=prof_res.data[0].get("updated_at"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving manual brand entry for {profile_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
