@@ -256,6 +256,10 @@ class PosterGenerationRequest(BaseModel):
     campaign_brief_id: Optional[str] = None
     custom_prompt: Optional[str] = None
     overlay_text: Optional[str] = None
+    selected_variant_id: Optional[str] = None
+    headline_text: Optional[str] = None
+    hook_text: Optional[str] = None
+    cta_text: Optional[str] = None
 
 
 class PosterGenerationResponse(BaseModel):

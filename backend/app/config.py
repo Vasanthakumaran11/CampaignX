@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     # Optional aliases
     SUPABASE_PUBLISHABLE_KEY: Optional[str] = None
     SUPABASE_SECRET_KEY: Optional[str] = None
+    NEXT_PUBLIC_SUPABASE_URL: Optional[str] = None
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: Optional[str] = None
 
     # Server Settings
     FASTAPI_PORT: int = 8000
@@ -51,8 +53,13 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Fallback aliases
-        if self.SUPABASE_ANON_KEY == "your-anon-public-key" and self.SUPABASE_PUBLISHABLE_KEY:
-            self.SUPABASE_ANON_KEY = self.SUPABASE_PUBLISHABLE_KEY
+        if (self.SUPABASE_URL == "https://your-project-ref.supabase.co" or not self.SUPABASE_URL) and self.NEXT_PUBLIC_SUPABASE_URL:
+            self.SUPABASE_URL = self.NEXT_PUBLIC_SUPABASE_URL
+        if (self.SUPABASE_ANON_KEY == "your-anon-public-key" or not self.SUPABASE_ANON_KEY):
+            if self.SUPABASE_PUBLISHABLE_KEY:
+                self.SUPABASE_ANON_KEY = self.SUPABASE_PUBLISHABLE_KEY
+            elif self.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+                self.SUPABASE_ANON_KEY = self.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         if self.SUPABASE_SERVICE_ROLE_KEY == "your-service-role-key" and self.SUPABASE_SECRET_KEY:
             self.SUPABASE_SERVICE_ROLE_KEY = self.SUPABASE_SECRET_KEY
 
